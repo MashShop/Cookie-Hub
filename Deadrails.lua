@@ -1,135 +1,61 @@
--- Load UI Library (Rayfield)
-local Rayfield = loadstring(game:HttpGet('https://raw.githubusercontent.com/shlexware/Rayfield/main/source'))()
-
-local Window = Rayfield:CreateWindow({
-   Name = "🍪 Cookie Hub DR",
-   Icon = 0,
-   LoadingTitle = "Loading, please wait...",
-   LoadingSubtitle = "by Cookie Hub Devs",
-   Theme = "Default",
-   ConfigurationSaving = {
-      Enabled = true,
-      FolderName = nil,
-      FileName = "CookieHubDR"
-   },
-   Discord = {
-      Enabled = false,
-      Invite = "noinvitelink",
-      RememberJoins = true
-   },
-   KeySystem = false,
-})
-
--- **Tab Utama**
-local MainTab = Window:CreateTab("Main", 124714113910876)
-local MainSection = MainTab:CreateSection("Main Features")
-
 local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
+local camera = workspace.CurrentCamera
 
--- **Auto Fuel (Bahan Bakar Tanpa Habis)**
-MainTab:CreateToggle({
-   Name = "Infinite Fuel",
-   Callback = function(v)
-      _G.InfiniteFuel = v
-      while _G.InfiniteFuel do
-         local Train = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Train")
-         if Train and Train:FindFirstChild("Fuel") then
-            Train.Fuel.Value = 9999999 -- Set bahan bakar penuh
-         end
-         task.wait(1)
-      end
-   end
-})
+local player = Players.LocalPlayer
+local mouse = player:GetMouse()
 
--- **Kill Musuh Dalam Radius 5km**
-MainTab:CreateToggle({
-   Name = "Kill All Enemies (5KM)",
-   Callback = function(v)
-      _G.KillNear = v
-      while _G.KillNear do
-         for _, enemy in pairs(Players:GetPlayers()) do
-            if enemy ~= LocalPlayer and enemy.Character and enemy.Character:FindFirstChild("HumanoidRootPart") then
-               local distance = (LocalPlayer.Character.HumanoidRootPart.Position - enemy.Character.HumanoidRootPart.Position).Magnitude
-               if distance <= 5000 then -- 5KM = 5000 studs
-                  if enemy.Character:FindFirstChild("Humanoid") then
-                     enemy.Character.Humanoid.Health = 0 -- Kill target
-                  end
-               end
-            end
-         end
-         task.wait(0.5)
-      end
-   end
-})
+-- Buat GUI
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "AutoAimGui"
+screenGui.ResetOnSpawn = false
+screenGui.Parent = player:WaitForChild("PlayerGui")
 
--- **Auto Damage 100 dan Kecepatan Serangan Cepat**
-MainTab:CreateToggle({
-   Name = "Weapon Damage 100 & Fast Attack",
-   Callback = function(v)
-      _G.WeaponMod = v
-      while _G.WeaponMod do
-         for _, tool in pairs(LocalPlayer.Backpack:GetChildren()) do
-            if tool:IsA("Tool") and tool:FindFirstChild("AttackSpeed") and tool:FindFirstChild("Damage") then
-               tool.Damage.Value = 100 -- Ganti damage jadi 100
-               tool.AttackSpeed.Value = 0.1 -- Kecepatan serangan tinggi
-            end
-         end
-         task.wait(1)
-      end
-   end
-})
+local button = Instance.new("TextButton")
+button.Name = "ToggleButton"
+button.Size = UDim2.new(0, 160, 0, 40)
+button.Position = UDim2.new(0, 10, 0, 10)
+button.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+button.TextColor3 = Color3.new(1, 1, 1)
+button.Text = "Auto Aim: OFF"
+button.TextSize = 18
+button.Parent = screenGui
 
--- **Auto Dapat Senjata & Jual Loot**
-MainTab:CreateToggle({
-   Name = "Auto Get Weapon & Sell Loot",
-   Callback = function(v)
-      _G.AutoLoot = v
-      while _G.AutoLoot do
-         local ShopEvent = ReplicatedStorage:FindFirstChild("SellAll")
-         if ShopEvent then
-            ShopEvent:InvokeServer() -- Jual semua barang
-         end
-         task.wait(5)
-      end
-   end
-})
+-- Auto Aim Logic
+local aimEnabled = false
 
--- **Memaksa Uang Jadi 3999**
-MainTab:CreateButton({
-   Name = "Force Money to 3999",
-   Callback = function()
-      local Money = LocalPlayer:FindFirstChild("Money")
-      if Money then
-         Money.Value = 3999 -- Paksa jumlah uang jadi 3999
-      end
-   end
-})
+button.MouseButton1Click:Connect(function()
+	aimEnabled = not aimEnabled
+	button.Text = aimEnabled and "Auto Aim: ON" or "Auto Aim: OFF"
+	button.BackgroundColor3 = aimEnabled and Color3.fromRGB(0, 150, 0) or Color3.fromRGB(40, 40, 40)
+end)
 
--- **Auto Farm Win**
-MainTab:CreateToggle({
-   Name = "Auto Farm Win",
-   Callback = function(v)
-      _G.FarmWin = v
-      while _G.FarmWin do
-         local Train = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("Train")
-         if Train then
-            Train.Position = Vector3.new(80000, 10, 0) -- Teleport kereta ke garis finish 80KM
-         end
-         task.wait(5)
-      end
-   end
-})
+function getClosestEnemy()
+	local closest = nil
+	local shortestDist = math.huge
 
--- **Teks Rekomendasi**
-local InfoTab = Window:CreateTab("Info", 124714113910876)
-local InfoSection = InfoTab:CreateSection("Important Notice")
+	for _, other in pairs(Players:GetPlayers()) do
+		if other ~= player and other.Character and other.Character:FindFirstChild("Head") then
+			local head = other.Character.Head
+			local screenPos, onScreen = camera:WorldToViewportPoint(head.Position)
+			if onScreen then
+				local dist = (Vector2.new(mouse.X, mouse.Y) - Vector2.new(screenPos.X, screenPos.Y)).magnitude
+				if dist < shortestDist and (head.Position - camera.CFrame.Position).Magnitude <= 100 then
+					shortestDist = dist
+					closest = head
+				end
+			end
+		end
+	end
 
-InfoTab:CreateLabel("⚠️ Recommended to use in Private Server & Play Solo! ⚠️")
+	return closest
+end
 
-Rayfield:Notify({
-   Title = "⚠️ Warning!",
-   Content = "Using this in public servers may get you banned!",
-   Duration = 6.5
-})
+RunService.RenderStepped:Connect(function()
+	if aimEnabled then
+		local target = getClosestEnemy()
+		if target then
+			camera.CFrame = CFrame.new(camera.CFrame.Position, target.Position)
+		end
+	end
+end)
